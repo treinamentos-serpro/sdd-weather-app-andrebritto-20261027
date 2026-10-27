@@ -47,19 +47,25 @@ dos gates de lançamento listados em **Open Questions**.
 **RF-03 — Consultar o clima atual**
 
 - Para a cidade selecionada, o sistema deve apresentar informações do clima
-  atual, incluindo temperatura e condição meteorológica.
-- Temperatura e condição são campos obrigatórios quando retornados pela fonte.
-  Cada valor deve ser identificado; um campo ausente deve ser indicado como
+  atual, incluindo temperatura e condição meteorológica, além de umidade,
+  velocidade do vento, precipitação e pressão quando retornadas pela fonte.
+- Temperatura, condição e métricas são campos opcionais no payload. Cada valor
+  disponível deve ser identificado; campo ausente deve ser indicado como
   indisponível, sem inferência ou substituição por zero.
-- Data/hora da observação, sensação térmica, vento, umidade e outros campos não
-  fazem parte da baseline confirmada; a inclusão depende de decisão de produto.
+- Apresentar umidade em porcentagem, velocidade do vento em km/h, precipitação
+  em mm e pressão em hPa.
+- Data/hora da observação, sensação térmica e outros campos além dos listados
+  não fazem parte da baseline confirmada; inclusão depende de decisão de produto.
 
 **RF-04 — Consultar a previsão de cinco dias**
 
 - Para a cidade selecionada, o sistema deve apresentar a previsão cobrindo hoje
   e os quatro dias seguintes.
-- Cada período deve apresentar sua data e os valores disponíveis, sem criar
-  valores para campos ou datas ausentes.
+- Cada período deve apresentar sua data, temperaturas máxima e mínima,
+  condição e probabilidade máxima diária de precipitação quando disponíveis,
+  sem criar valores para campos ou datas ausentes.
+- A probabilidade de precipitação é apresentada em porcentagem; quando ausente,
+  deve ser identificada como indisponível.
 - Granularidade, variáveis obrigatórias e fuso que determina “hoje” ainda
   dependem de decisão; não liberar implementação/testes finais da previsão
   antes dessas definições.
@@ -170,6 +176,13 @@ requisito funcional correspondente para apoiar a criação de testes automatizad
   **When** a seção de clima atual é apresentada, **Then** cada campo disponível
   é mostrado e cada campo ausente é identificado como indisponível, sem valor
   inventado.
+- **CA-03.5:** **Given** uma resposta atual com umidade, velocidade do vento,
+  precipitação ou pressão disponíveis, **When** o clima atual é apresentado,
+  **Then** cada métrica recebida é exibida com sua unidade (%, km/h, mm e hPa,
+  respectivamente).
+- **CA-03.6:** **Given** uma ou mais métricas atuais ausentes, **When** o clima
+  atual é apresentado, **Then** as métricas ausentes são identificadas como
+  indisponíveis e nenhuma é inferida ou substituída.
 
 **RF-04 — Consultar a previsão de cinco dias**
 
@@ -188,6 +201,9 @@ requisito funcional correspondente para apoiar a criação de testes automatizad
   ausentes, **When** a previsão é apresentada, **Then** somente os dados
   recebidos são mostrados, os campos ausentes são identificados e nenhuma
   temperatura ou condição é inferida.
+- **CA-04.6:** **Given** uma probabilidade diária de precipitação disponível,
+  **When** a previsão é apresentada, **Then** o percentual é exibido; se estiver
+  ausente, a interface o identifica como indisponível.
 
 **RF-05 — Alternar unidade de temperatura**
 
@@ -270,7 +286,7 @@ medição.
 | **US-01** — Bruna pesquisa e distingue cidades. | RF-01 | CA-01.1–CA-01.6 | RNF-01 (uso em diferentes telas), RNF-02 (busca acessível), RNF-03 (tempo de busca), RNF-05 (falha/timeout), RNF-06 (consulta enviada ao provedor). |
 | **US-02** — Ana seleciona e confirma a cidade. | RF-02 | CA-02.1–CA-02.3 | RNF-01 (layout responsivo), RNF-02 (seleção acessível), RNF-03 (tempo de consulta), RNF-05 (resposta atrasada/falha), RNF-06 (sem persistência de dados meteorológicos associados). |
 | **US-03** — Bruna consulta o clima atual. | RF-03 | CA-03.1–CA-03.4; CA-05.1 (unidade padrão) | RNF-01 (apresentação responsiva), RNF-02 (conteúdo acessível), RNF-03 (tempo de consulta), RNF-04 (disponibilidade), RNF-05 (dados ausentes/falhas), RNF-06 (privacidade da consulta). |
-| **US-04** — Rafael consulta a previsão de cinco dias. | RF-04 | CA-04.1–CA-04.5 | RNF-01 (apresentação responsiva), RNF-02 (datas e dados acessíveis), RNF-03 (tempo de consulta), RNF-04 (disponibilidade), RNF-05 (resposta parcial/falhas), RNF-06 (privacidade da consulta). |
+| **US-04** — Rafael consulta a previsão de cinco dias. | RF-04 | CA-04.1–CA-04.6 | RNF-01 (apresentação responsiva), RNF-02 (datas e dados acessíveis), RNF-03 (tempo de consulta), RNF-04 (disponibilidade), RNF-05 (resposta parcial/falhas), RNF-06 (privacidade da consulta). |
 | **US-05** — Rafael alterna Celsius e Fahrenheit. | RF-05 | CA-05.1–CA-05.4 | RNF-01 (uso em diferentes telas), RNF-02 (controle acessível), RNF-06 (sem persistência no servidor; persistência local não definida). |
 | **US-06** — Ana entende estados e como prosseguir. | RF-06 | CA-06.1–CA-06.5; CA-01.4 e CA-01.6 (estados de busca) | RNF-01 (estados em layouts responsivos), RNF-02 (estados acessíveis), RNF-03 (latência), RNF-05 (término de solicitações), RNF-06 (tratamento de dados). |
 | **US-07** — Ana usa a interface em português do Brasil. | RF-07 | CA-07.1 | RNF-01 (conteúdo em telas diferentes), RNF-02 (nomes e mensagens acessíveis). |
@@ -376,7 +392,9 @@ prontos para implementação/validação de lançamento.
    digitação; limite e ordenação dos resultados.
 2. **Dados meteorológicos:** campos obrigatórios do clima atual; previsão diária,
    horária ou ambas; variáveis obrigatórias por período e política de resposta
-   parcial.
+   parcial. A baseline de UI inclui probabilidade máxima diária de precipitação
+   em porcentagem quando disponível; granularidade e outros campos obrigatórios
+   ainda precisam de aprovação.
 3. **Datas e fuso:** qual fuso define “hoje” e as cinco datas da previsão. A
    recomendação é usar o fuso local da cidade consultada, mas precisa de
    aprovação para produzir datas de teste inequívocas.

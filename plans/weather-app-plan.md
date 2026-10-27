@@ -144,6 +144,10 @@ interface City {
 interface CurrentWeather {
   temperatureC?: number;
   weatherCode?: number;
+  humidityPercent?: number;
+  windSpeedKmh?: number;
+  precipitationMm?: number;
+  pressureHpa?: number;
 }
 
 interface ForecastDay {
@@ -151,6 +155,7 @@ interface ForecastDay {
   temperatureMaxC?: number;
   temperatureMinC?: number;
   weatherCode?: number;
+  precipitationProbabilityPercent?: number;
 }
 
 interface WeatherData {
@@ -269,12 +274,15 @@ validar a resposta antes do mapeamento.
 
 - **URL:** `https://api.open-meteo.com/v1/forecast`
 - **Parâmetros do exemplo:** `latitude` e `longitude` da cidade selecionada;
-  `current=temperature_2m,weather_code` para temperatura e condição atuais;
-  `daily=temperature_2m_max,temperature_2m_min,weather_code` para valores
-  diários; `forecast_days=5` para hoje e os quatro dias seguintes;
+  `current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,precipitation,surface_pressure`
+  para temperatura, condição, umidade relativa, velocidade do vento,
+  precipitação e pressão atuais;
+  `daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max`
+  para valores diários e probabilidade máxima diária de precipitação;
+  `forecast_days=5` para hoje e os quatro dias seguintes;
   `timezone=auto` para datas no fuso local; `temperature_unit=celsius` para
   manter os dados internos em Celsius. Exemplo:
-  `https://api.open-meteo.com/v1/forecast?latitude=38.71667&longitude=-9.13333&current=temperature_2m%2Cweather_code&daily=temperature_2m_max%2Ctemperature_2m_min%2Cweather_code&forecast_days=5&timezone=auto&temperature_unit=celsius`.
+  `https://api.open-meteo.com/v1/forecast?latitude=38.71667&longitude=-9.13333&current=temperature_2m%2Cweather_code%2Crelative_humidity_2m%2Cwind_speed_10m%2Cprecipitation%2Csurface_pressure&daily=temperature_2m_max%2Ctemperature_2m_min%2Cweather_code&forecast_days=5&timezone=auto&temperature_unit=celsius`.
 - **Resposta resumida:**
 
   ```json
@@ -284,18 +292,27 @@ validar a resposta antes do mapeamento.
     "timezone": "Europe/Lisbon",
     "current_units": {
       "temperature_2m": "°C",
-      "weather_code": "wmo code"
+      "weather_code": "wmo code",
+      "relative_humidity_2m": "%",
+      "wind_speed_10m": "km/h",
+      "precipitation": "mm",
+      "surface_pressure": "hPa"
     },
     "current": {
       "time": "2026-10-27T16:00",
       "temperature_2m": 18.4,
-      "weather_code": 3
+      "weather_code": 3,
+      "relative_humidity_2m": 64,
+      "wind_speed_10m": 12.5,
+      "precipitation": 0.1,
+      "surface_pressure": 1013.2
     },
     "daily_units": {
       "time": "iso8601",
       "temperature_2m_max": "°C",
       "temperature_2m_min": "°C",
-      "weather_code": "wmo code"
+      "weather_code": "wmo code",
+      "precipitation_probability_max": "%"
     },
     "daily": {
       "time": [
@@ -307,20 +324,29 @@ validar a resposta antes do mapeamento.
       ],
       "temperature_2m_max": [20.1, 19.8, 18.9, 20.4, 21.0],
       "temperature_2m_min": [14.2, 13.9, 13.1, 14.0, 14.7],
-      "weather_code": [3, 2, 61, 3, 1]
+      "weather_code": [3, 2, 61, 3, 1],
+      "precipitation_probability_max": [10, 20, 80, 15, 5]
     }
   }
   ```
 
 - **Mapeamento:** `current.temperature_2m` vira
   `CurrentWeather.temperatureC`; `current.weather_code` vira
-  `CurrentWeather.weatherCode`. Os rótulos da condição devem ser derivados do
-  código WMO localmente, sem tratar o código numérico como texto descritivo.
+  `CurrentWeather.weatherCode`; `current.relative_humidity_2m`,
+  `current.wind_speed_10m`, `current.precipitation` e
+  `current.surface_pressure` viram, respectivamente,
+  `humidityPercent`, `windSpeedKmh`, `precipitationMm` e `pressureHpa`. Os
+  rótulos e ícones da condição devem ser derivados do código WMO localmente,
+  sem tratar o código numérico como texto descritivo. Essas métricas permanecem
+  opcionais quando ausentes na resposta.
   Para cada índice `i` de `daily.time`, criar um `ForecastDay` com
   `date=daily.time[i]`, `temperatureMaxC=daily.temperature_2m_max[i]`,
   `temperatureMinC=daily.temperature_2m_min[i]` e
-  `weatherCode=daily.weather_code[i]`. Vincular current e forecast à
-  `City` selecionada para formar `WeatherData`.
+  `weatherCode=daily.weather_code[i]` e
+  `precipitationProbabilityPercent=daily.precipitation_probability_max[i]`.
+  A probabilidade é percentual e opcional; se ausente, indicar indisponibilidade
+  sem inferir. Vincular current e forecast à `City` selecionada para formar
+  `WeatherData`.
 - O exemplo diário é uma proposta para atender “hoje e os quatro dias
   seguintes”; previsão diária versus horária, variáveis obrigatórias, política
   de dados parciais e fuso seguem como gates da spec. Não assumir cinco datas

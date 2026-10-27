@@ -17,7 +17,7 @@ mas não criam dependência implícita.
 | **RF-01 — Pesquisar cidades** | T-01, T-07, T-09, T-13, T-14, T-19 | T-23, T-24, T-25, T-29 | Nenhuma lacuna funcional identificada. |
 | **RF-02 — Selecionar a cidade** | T-04, T-08, T-09, T-14, T-15, T-16, T-18, T-19 | T-24, T-25, T-26, T-29, T-30 | Nenhuma lacuna funcional identificada. |
 | **RF-03 — Consultar o clima atual** | T-04, T-06, T-08, T-09, T-15, T-18, T-19 | T-22, T-23, T-26, T-27, T-29 | Nenhuma lacuna funcional identificada. |
-| **RF-04 — Consultar a previsão de cinco dias** | T-01, T-04, T-06, T-08, T-09, T-16, T-18, T-19 | T-22, T-23, T-26, T-29 | Nenhuma lacuna funcional identificada; granularidade, variáveis e fuso continuam gates em T-01. |
+| **RF-04 — Consultar a previsão de cinco dias** | T-01, T-04, T-06, T-08, T-09, T-16, T-18, T-19 | T-22, T-23, T-26, T-29 | Nenhuma lacuna funcional identificada; granularidade e fuso continuam gates em T-01. |
 | **RF-05 — Alternar unidade de temperatura** | T-01, T-04, T-05, T-09, T-15, T-16, T-17, T-18, T-19 | T-21, T-26, T-27, T-29 | Nenhuma lacuna funcional identificada; persistência e arredondamento são decisões de T-01. |
 | **RF-06 — Informar estados da consulta** | T-02, T-09, T-10, T-11, T-12, T-13, T-18, T-19 | T-23, T-24, T-25, T-27, T-28, T-29, T-30 | Nenhuma lacuna funcional identificada; timeout e critérios operacionais permanecem gate em T-02. |
 | **RF-07 — Apresentar a interface em português do Brasil** | T-06, T-10–T-20 | T-22, T-25–T-29 | **Cobertura parcial:** falta tarefa explícita para definir e validar formatos regionais consistentes de datas e números, exigidos pela spec antes do aceite final. |
@@ -190,7 +190,7 @@ refiná-los após resolver os gates T-01 e T-02.
     implícito do dispositivo.
   - As funções não dependem de rede ou estado React.
 - **Dependências:** T-04.
-- **Arquivos prováveis:** `src/lib/weatherCode.ts`, `src/lib/date.ts`.
+- **Arquivos prováveis:** `src/lib/weatherCodes.ts`, `src/lib/date.ts`.
 - **Tipo:** Data.
 - **Rastreabilidade:** CA-03.1, CA-04.1, CA-04.2, CA-04.5, CA-07.1.
 
@@ -324,12 +324,14 @@ refiná-los após resolver os gates T-01 e T-02.
 - **Critérios de aceite:**
   - Conteúdo corresponde à cidade selecionada e mostra apenas dados recebidos.
   - Temperatura usa a unidade escolhida; condição usa rótulo WMO em pt-BR.
+  - Umidade, vento, precipitação e pressão são mostrados com unidades
+    identificadas quando recebidos.
   - Campos ausentes são identificados como indisponíveis, sem valores
     substitutos ou dados de seleção anterior.
 - **Dependências:** T-04, T-05, T-06, T-09, T-12.
 - **Arquivos prováveis:** `src/components/CurrentWeather.tsx`.
 - **Tipo:** UI.
-- **Rastreabilidade:** CA-02.2, CA-03.1–CA-03.4, CA-05.1–CA-05.4, CA-07.1.
+- **Rastreabilidade:** CA-02.2, CA-03.1–CA-03.6, CA-05.1–CA-05.4, CA-07.1.
 
 ### T-16 — Criar lista acessível de previsão
 
@@ -338,14 +340,17 @@ refiná-los após resolver os gates T-01 e T-02.
 - **Critérios de aceite:**
   - Cada período está semanticamente associado à data recebida e formatada
     conforme T-06.
-  - Temperaturas e condições exibem somente valores recebidos; cada campo
-    ausente fica identificado, sem inferência.
+  - Ícone e condição usam o código WMO; temperaturas máximas/mínimas respeitam
+    a unidade atual e exibem somente valores recebidos.
+  - Probabilidade máxima diária de chuva é exibida em porcentagem quando
+    recebida; campo ausente fica identificado, sem inferência.
   - Quantidade e granularidade dos períodos correspondem ao contrato aprovado
     em T-01 e os dados pertencem à cidade selecionada.
 - **Dependências:** T-04, T-05, T-06, T-09, T-12.
-- **Arquivos prováveis:** `src/components/ForecastList.tsx`.
+- **Arquivos prováveis:** `src/components/ForecastList.tsx`,
+  `src/components/ForecastCard.tsx`.
 - **Tipo:** UI.
-- **Rastreabilidade:** CA-02.2, CA-04.1–CA-04.5, CA-05.1–CA-05.4,
+- **Rastreabilidade:** CA-02.2, CA-04.1–CA-04.6, CA-05.1–CA-05.4,
   CA-07.1.
 
 ### T-17 — Criar controle de unidade
@@ -429,7 +434,7 @@ refiná-los após resolver os gates T-01 e T-02.
   - Testes cobrem a formatação de datas conforme os gates aprovados, sem
     depender do fuso implícito do dispositivo.
 - **Dependências:** T-06, T-20.
-- **Arquivos prováveis:** `tests/unit/lib/weatherCode.test.ts`,
+- **Arquivos prováveis:** `tests/unit/lib/weatherCodes.test.ts`,
   `tests/unit/lib/date.test.ts`.
 - **Tipo:** Test.
 - **Rastreabilidade:** CA-03.1, CA-04.1, CA-04.2, CA-04.5, CA-07.1.
@@ -445,7 +450,7 @@ refiná-los após resolver os gates T-01 e T-02.
 - **Dependências:** T-07, T-08, T-20.
 - **Arquivos prováveis:** `tests/unit/services/openMeteo.test.ts`.
 - **Tipo:** Test.
-- **Rastreabilidade:** CA-01.1–CA-01.6, CA-03.1–CA-03.4,
+- **Rastreabilidade:** CA-01.1–CA-01.6, CA-03.1–CA-03.6,
   CA-04.1–CA-04.5, CA-06.3–CA-06.5.
 
 ### T-24 — Testar orquestração do hook
@@ -482,14 +487,16 @@ refiná-los após resolver os gates T-01 e T-02.
 - **Descrição:** Testar apresentação de clima, previsão, unidade e estados
   meteorológicos.
 - **Critérios de aceite:**
-  - Testes cobrem dados completos/parciais, campos indisponíveis e conteúdo
-    associado à cidade selecionada.
-  - Datas e nomes acessíveis relevantes são verificados.
+  - Testes cobrem dados completos/parciais, métricas meteorológicas,
+    conversão da temperatura, campos indisponíveis e conteúdo associado à
+    cidade selecionada.
+  - Datas, probabilidade de precipitação e nomes acessíveis relevantes são
+    verificados.
 - **Dependências:** T-15, T-16, T-20.
 - **Arquivos prováveis:** `tests/components/CurrentWeather.test.tsx`,
   `tests/components/ForecastList.test.tsx`.
 - **Tipo:** Test.
-- **Rastreabilidade:** CA-02.2, CA-03.1–CA-03.4, CA-04.1–CA-04.5,
+- **Rastreabilidade:** CA-02.2, CA-03.1–CA-03.6, CA-04.1–CA-04.6,
   CA-07.1.
 
 ### T-27 — Testar controle e painel meteorológico

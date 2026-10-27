@@ -14,6 +14,7 @@ export default {
           400: '#8b9bff',
           500: '#6d7cff',
           600: '#5a67ec',
+          700: '#535fdb',
         },
         sun: '#f5b942',
       },
