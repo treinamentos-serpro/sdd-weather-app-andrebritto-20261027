@@ -17,10 +17,27 @@ describe('SearchBar', () => {
 
     const input = screen.getByRole('searchbox', { name: 'Buscar cidade' });
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Digite o nome de uma cidade.');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
     await user.type(input, '   ');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
 
     expect(onSearch).not.toHaveBeenCalled();
+    expect(input).toHaveAccessibleDescription('Digite o nome de uma cidade.');
+  });
+
+  it('submits special characters as text and clears validation feedback', async () => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} />);
+
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+    await user.type(screen.getByRole('searchbox'), "São Tomé & Príncipe + d'Oeste?");
+    await user.keyboard('{Enter}');
+
+    expect(onSearch).toHaveBeenCalledExactlyOnceWith("São Tomé & Príncipe + d'Oeste?");
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('searchbox')).not.toHaveAttribute('aria-invalid');
   });
 
   it.each([

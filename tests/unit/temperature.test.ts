@@ -15,6 +15,14 @@ describe('convertTemperature', () => {
 });
 
 describe('formatTemperature', () => {
+  it.each([
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+    Number.MAX_VALUE,
+  ])('does not display non-finite temperatures or conversion overflow: %s', (value) => {
+    expect(formatTemperature(value, 'fahrenheit')).toBe('Indisponível');
+  });
   it('rounds to one decimal and appends the Celsius symbol', () => {
     expect(formatTemperature(21.26, 'celsius')).toBe('21,3 °C');
   });

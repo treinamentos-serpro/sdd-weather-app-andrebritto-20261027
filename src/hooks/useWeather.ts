@@ -43,6 +43,7 @@ export default function useWeather() {
       status: 'loading',
       data: null,
       error: null,
+      query: city.name,
     }));
 
     try {

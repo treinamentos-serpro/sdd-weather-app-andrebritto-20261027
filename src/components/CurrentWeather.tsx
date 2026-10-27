@@ -28,7 +28,7 @@ export default function CurrentWeather({ city, current, unit }: CurrentWeatherPr
   const condition = getWeatherCondition(current.weatherCode);
   const unavailable = 'Indisponível';
   const formatMetric = (value: number | undefined, unitLabel: string) =>
-    value === undefined
+    typeof value !== 'number' || !Number.isFinite(value)
       ? unavailable
       : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)} ${unitLabel}`;
 
@@ -67,7 +67,7 @@ export default function CurrentWeather({ city, current, unit }: CurrentWeatherPr
         <Metric
           label="Umidade"
           value={
-            current.humidityPercent === undefined
+            typeof current.humidityPercent !== 'number' || !Number.isFinite(current.humidityPercent)
               ? unavailable
               : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(current.humidityPercent)}%`
           }

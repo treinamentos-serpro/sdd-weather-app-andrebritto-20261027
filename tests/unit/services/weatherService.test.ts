@@ -16,6 +16,97 @@ const city: City = {
 };
 
 describe('weatherService', () => {
+  it('normalizes nullable optional city fields without rejecting a valid city', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [{ ...city, id: null, admin1: null, country: null, timezone: null }],
+        }),
+      }),
+    );
+
+    await expect(searchCities('São Paulo')).resolves.toEqual([
+      { ...city, id: undefined, admin1: undefined, country: undefined, timezone: undefined },
+    ]);
+  });
+
+  it('treats null geocoding results as no cities', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results: null }) }),
+    );
+
+    await expect(searchCities('Cidade')).resolves.toEqual([]);
+  });
+
+  it.each([
+    { ...city, name: null },
+    { ...city, name: ' ' },
+    { ...city, latitude: null },
+    { ...city, longitude: undefined },
+  ])('rejects unusable city identity or coordinates: %j', async (result) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results: [result] }) }),
+    );
+
+    await expect(searchCities('Cidade')).rejects.toBeInstanceOf(WeatherServiceError);
+  });
+
+  it('keeps parallel daily indexes when arrays contain null or missing values', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          current: {
+            temperature_2m: null,
+            weather_code: null,
+            relative_humidity_2m: null,
+            wind_speed_10m: null,
+            precipitation: null,
+            surface_pressure: null,
+          },
+          daily: {
+            time: ['2026-10-27', '2026-10-28'],
+            temperature_2m_max: [null, 20],
+            temperature_2m_min: null,
+            weather_code: [null, 0],
+            precipitation_probability_max: [null],
+          },
+        }),
+      }),
+    );
+
+    const data = await getWeather(city);
+    expect(data.current).toEqual({
+      temperatureC: undefined,
+      weatherCode: undefined,
+      humidityPercent: undefined,
+      windSpeedKmh: undefined,
+      precipitationMm: 0,
+      pressureHpa: undefined,
+    });
+    expect(data.forecast).toEqual([
+      {
+        date: '2026-10-27',
+        temperatureMaxC: undefined,
+        temperatureMinC: undefined,
+        weatherCode: undefined,
+        precipitationProbabilityPercent: undefined,
+      },
+      {
+        date: '2026-10-28',
+        temperatureMaxC: 20,
+        temperatureMinC: undefined,
+        weatherCode: 0,
+        precipitationProbabilityPercent: undefined,
+      },
+    ]);
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
@@ -138,6 +229,73 @@ describe('weatherService', () => {
     await expect(searchCities('São Paulo')).rejects.toMatchObject({
       name: 'WeatherServiceError',
       message: 'Falha de rede.',
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps the timeout active while reading the response body', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            new Promise((_resolve, reject) => {
+              init?.signal?.addEventListener('abort', () => {
+                reject(new DOMException('Aborted', 'AbortError'));
+              });
+            }),
+        }),
+      ),
+    );
+    const request = searchCities('São Paulo');
+    const rejection = expect(request).rejects.toMatchObject({
+      name: 'WeatherServiceError',
+      message: 'A requisição demorou demais.',
+    });
+
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await rejection;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('reports a network failure during body reading instead of invalid JSON', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new TypeError('Connection lost');
+        },
+      }),
+    );
+
+    await expect(getWeather(city)).rejects.toMatchObject({
+      name: 'WeatherServiceError',
+      message: 'Falha de rede.',
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('reports malformed JSON and clears the timeout', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('Invalid JSON');
+        },
+      }),
+    );
+
+    await expect(searchCities('São Paulo')).rejects.toMatchObject({
+      name: 'WeatherServiceError',
+      message: 'A resposta de geocodificação é inválida.',
     });
     expect(vi.getTimerCount()).toBe(0);
   });

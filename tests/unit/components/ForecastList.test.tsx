@@ -41,6 +41,30 @@ const forecast: ForecastDay[] = [
 ];
 
 describe('ForecastList', () => {
+  it('shows safe fallbacks for invalid dates and non-finite numeric values', () => {
+    render(
+      <ForecastList
+        forecast={[
+          {
+            date: '2026-02-30',
+            temperatureMaxC: Number.NaN,
+            temperatureMinC: Number.POSITIVE_INFINITY,
+            weatherCode: 999,
+            precipitationProbabilityPercent: Number.NaN,
+          },
+        ]}
+        unit="celsius"
+      />,
+    );
+
+    expect(screen.getByRole('article')).not.toHaveTextContent(/NaN|undefined|Infinity|∞/);
+    expect(screen.getByRole('heading', { name: 'Data indisponível' })).toBeVisible();
+    expect(screen.getByText('Máx. Indisponível')).toBeVisible();
+    expect(screen.getByText('Mín. Indisponível')).toBeVisible();
+    expect(screen.getByText('Chuva: Indisponível')).toBeVisible();
+    expect(screen.getByRole('img', { name: 'Condição indisponível' })).toBeVisible();
+  });
+
   it('renders each forecast day with condition, temperatures, and rain probability', () => {
     render(<ForecastList forecast={forecast} unit="celsius" />);
 

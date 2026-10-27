@@ -272,6 +272,17 @@ validar a resposta antes do mapeamento.
 
 **Forecast**
 
+Política de ausência nos campos consumidos: `results` nulo/omitido representa
+lista vazia. `id`, `admin1`, `country` e `timezone` nulos são normalizados para
+`undefined`; nome vazio e coordenadas ausentes/nulas invalidam a localidade,
+sem inventar identidade ou posição. Campos numéricos de `current` e valores
+dos arrays diários nulos/omitidos/não finitos ficam `undefined`, exceto
+precipitação atual explicitamente nula (0 mm). Arrays diários opcionais nulos,
+omitidos ou curtos não deslocam os índices. A UI mostra “Indisponível” para
+valores ausentes/não finitos e “Data indisponível” para datas inválidas.
+Blocos `current`/`daily` ou `daily.time` ausentes/nulos, assim como entradas de
+data não textuais, geram erro explícito, não sucesso com dados inventados.
+
 - **URL:** `https://api.open-meteo.com/v1/forecast`
 - **Parâmetros do exemplo:** `latitude` e `longitude` da cidade selecionada;
   `current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,precipitation,surface_pressure`

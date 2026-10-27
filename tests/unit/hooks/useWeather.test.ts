@@ -149,6 +149,36 @@ describe('useWeather', () => {
     expect(result.current.status).toBe('success');
   });
 
+  it('retries only forecast when it fails after a successful city search', async () => {
+    vi.mocked(searchCities).mockResolvedValue([city]);
+    vi.mocked(getWeather)
+      .mockRejectedValueOnce(new Error('Falha de rede.'))
+      .mockResolvedValueOnce(weatherData);
+    const { result } = renderHook(() => useWeather());
+
+    await act(async () => {
+      await result.current.search('São Paulo');
+    });
+    expect(result.current).toMatchObject({
+      status: 'error',
+      data: null,
+      cities: [city],
+      error: 'Falha de rede.',
+    });
+
+    await act(async () => {
+      await result.current.retry();
+    });
+    expect(searchCities).toHaveBeenCalledOnce();
+    expect(getWeather).toHaveBeenCalledTimes(2);
+    expect(getWeather).toHaveBeenLastCalledWith(city);
+    expect(result.current).toMatchObject({
+      status: 'success',
+      data: weatherData,
+      error: null,
+    });
+  });
+
   it('ignores a stale search response when a newer search has finished', async () => {
     let resolveFirstSearch: (cities: City[]) => void = () => {};
     vi.mocked(searchCities)

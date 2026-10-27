@@ -122,3 +122,75 @@ test('renderiza o clima e permite conversão em viewport mobile de 375x812', asy
     height: 812,
   });
 });
+
+for (const query of ['', '   ']) {
+  test(`busca inválida ${JSON.stringify(query)} informa validação sem chamar API`, async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    await page.route('https://*.open-meteo.com/**', (route) => {
+      requests.push(route.request().url());
+      return route.fulfill({ json: {} });
+    });
+    await page.goto('/');
+    const input = page.getByRole('searchbox', { name: 'Buscar cidade' });
+    await input.fill(query);
+    await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+
+    await expect(page.getByRole('alert')).toHaveText('Digite o nome de uma cidade.');
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(requests).toEqual([]);
+  });
+}
+
+test('preserva caracteres especiais na consulta e mostra ausência de resultados', async ({
+  page,
+}) => {
+  const query = "São Tomé & Príncipe + d'Oeste?";
+  const names: (string | null)[] = [];
+  await page.route('https://geocoding-api.open-meteo.com/v1/search?**', (route) => {
+    names.push(new URL(route.request().url()).searchParams.get('name'));
+    return route.fulfill({ json: {} });
+  });
+  await page.goto('/');
+  await page.getByRole('searchbox').fill(query);
+  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+
+  await expect(
+    page.getByRole('heading', { name: `Nenhuma cidade encontrada para "${query}"`, exact: true }),
+  ).toBeVisible();
+  expect(names).toEqual([query]);
+});
+
+for (const missing of ['current', 'daily']) {
+  test(`forecast sem ${missing} mostra erro, limpa dados e permite retry`, async ({ page }) => {
+    await assertWeatherFlow(page);
+    await page.route('https://api.open-meteo.com/v1/forecast?**', (route) =>
+      route.fulfill({
+        json: missing === 'current' ? { daily: { time: [] } } : { current: { temperature_2m: 0 } },
+      }),
+    );
+    await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+
+    await expect(page.getByRole('alert')).toContainText(
+      'A resposta meteorológica está incompleta.',
+    );
+    await expect(page.getByRole('region', { name: 'São Paulo, Brasil', exact: true })).toHaveCount(
+      0,
+    );
+    await expect(page.getByRole('region', { name: 'Previsão de 5 dias' })).toHaveCount(0);
+
+    await page.route('https://api.open-meteo.com/v1/forecast?**', (route) =>
+      route.fulfill({
+        json: { current: { temperature_2m: 0 }, daily: { time: ['2026-10-27'] } },
+      }),
+    );
+    await page.getByRole('button', { name: 'Tentar novamente' }).click();
+    await expect(
+      page
+        .getByRole('region', { name: 'São Paulo, Brasil', exact: true })
+        .getByText('32 °F', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+}

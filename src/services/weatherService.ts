@@ -19,13 +19,13 @@ const DAILY_WEATHER_FIELDS = [
 ].join(',');
 
 interface GeocodingResult {
-  id?: number;
+  id?: number | null;
   name: string;
-  admin1?: string;
-  country?: string;
+  admin1?: string | null;
+  country?: string | null;
   latitude: number;
   longitude: number;
-  timezone?: string;
+  timezone?: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -39,14 +39,15 @@ function isGeocodingResult(value: unknown): value is GeocodingResult {
 
   return (
     typeof value.name === 'string' &&
+    value.name.trim().length > 0 &&
     typeof value.latitude === 'number' &&
     Number.isFinite(value.latitude) &&
     typeof value.longitude === 'number' &&
     Number.isFinite(value.longitude) &&
-    (value.id === undefined || typeof value.id === 'number') &&
-    (value.admin1 === undefined || typeof value.admin1 === 'string') &&
-    (value.country === undefined || typeof value.country === 'string') &&
-    (value.timezone === undefined || typeof value.timezone === 'string')
+    (value.id == null || (typeof value.id === 'number' && Number.isFinite(value.id))) &&
+    (value.admin1 == null || typeof value.admin1 === 'string') &&
+    (value.country == null || typeof value.country === 'string') &&
+    (value.timezone == null || typeof value.timezone === 'string')
   );
 }
 
@@ -64,28 +65,40 @@ function getOptionalArrayValue(values: unknown, index: number): number | undefin
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
-async function fetchWithTimeout(url: string): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  description: string,
+  httpErrorMessage: string,
+): Promise<unknown> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    return await fetch(url, { signal: controller.signal });
-  } catch (error) {
-    if (isRecord(error) && error.name === 'AbortError') {
-      throw new WeatherServiceError('A requisição demorou demais.');
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new WeatherServiceError(
+        `${httpErrorMessage} (HTTP ${response.status}).`,
+        response.status,
+      );
     }
 
-    throw new WeatherServiceError('Falha de rede.');
+    return await response.json();
+  } catch (error) {
+    if (controller.signal.aborted || (isRecord(error) && error.name === 'AbortError')) {
+      throw new WeatherServiceError('A requisição demorou demais.');
+    }
+    if (error instanceof WeatherServiceError) {
+      throw error;
+    }
+    if (error instanceof SyntaxError) {
+      throw new WeatherServiceError(`A resposta de ${description} é inválida.`);
+    }
+    if (error instanceof TypeError) {
+      throw new WeatherServiceError('Falha de rede.');
+    }
+    throw error;
   } finally {
     clearTimeout(timeoutId);
-  }
-}
-
-async function parseJsonResponse(response: Response, description: string): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    throw new WeatherServiceError(`A resposta de ${description} é inválida.`);
   }
 }
 
@@ -105,24 +118,18 @@ export async function searchCities(name: string): Promise<City[]> {
     return [];
   }
 
-  const response = await fetchWithTimeout(
+  const data = await fetchWithTimeout(
     `${GEOCODING_API_URL}?name=${encodeURIComponent(trimmedName)}&language=pt`,
+    'geocodificação',
+    'A busca de cidades falhou',
   );
-  if (!response.ok) {
-    throw new WeatherServiceError(
-      `A busca de cidades falhou (HTTP ${response.status}).`,
-      response.status,
-    );
-  }
-
-  const data = await parseJsonResponse(response, 'geocodificação');
 
   if (!isRecord(data)) {
     throw new WeatherServiceError('A resposta de geocodificação é inválida.');
   }
 
   const results = data.results;
-  if (results === undefined) {
+  if (results == null) {
     return [];
   }
   if (!Array.isArray(results)) {
@@ -136,13 +143,13 @@ export async function searchCities(name: string): Promise<City[]> {
 
     const { id, name: cityName, admin1, country, latitude, longitude, timezone } = result;
     return {
-      id,
+      id: id ?? undefined,
       name: cityName,
-      admin1,
-      country,
+      admin1: admin1?.trim() || undefined,
+      country: country?.trim() || undefined,
       latitude,
       longitude,
-      timezone,
+      timezone: timezone?.trim() || undefined,
     };
   });
 }
@@ -157,15 +164,11 @@ export async function getWeather(city: City): Promise<WeatherData> {
     timezone: 'auto',
     temperature_unit: 'celsius',
   });
-  const response = await fetchWithTimeout(`${FORECAST_API_URL}?${params.toString()}`);
-  if (!response.ok) {
-    throw new WeatherServiceError(
-      `A consulta meteorológica falhou (HTTP ${response.status}).`,
-      response.status,
-    );
-  }
-
-  const data = await parseJsonResponse(response, 'previsão meteorológica');
+  const data = await fetchWithTimeout(
+    `${FORECAST_API_URL}?${params.toString()}`,
+    'previsão meteorológica',
+    'A consulta meteorológica falhou',
+  );
   if (!isRecord(data) || !isRecord(data.current) || !isRecord(data.daily)) {
     throw new WeatherServiceError('A resposta meteorológica está incompleta.');
   }

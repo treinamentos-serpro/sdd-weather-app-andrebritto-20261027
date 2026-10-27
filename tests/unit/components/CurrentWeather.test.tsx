@@ -20,6 +20,28 @@ const current: CurrentWeatherData = {
 };
 
 describe('CurrentWeather', () => {
+  it('does not display non-finite weather values', () => {
+    render(
+      <CurrentWeather
+        city={city}
+        current={{
+          temperatureC: Number.NaN,
+          weatherCode: Number.NaN,
+          humidityPercent: Number.NaN,
+          windSpeedKmh: Number.POSITIVE_INFINITY,
+          precipitationMm: Number.NaN,
+          pressureHpa: Number.NEGATIVE_INFINITY,
+        }}
+        unit="fahrenheit"
+      />,
+    );
+
+    const region = screen.getByRole('region', { name: 'São Paulo, Brasil' });
+    expect(region).not.toHaveTextContent(/NaN|undefined|Infinity|∞/);
+    expect(screen.getAllByText('Indisponível')).toHaveLength(5);
+    expect(screen.getByText('Condição: Indisponível')).toBeVisible();
+  });
+
   it('renders the city, current condition, temperature, and metric units', () => {
     render(<CurrentWeather city={city} current={current} unit="celsius" />);
 

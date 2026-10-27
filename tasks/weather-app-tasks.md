@@ -450,6 +450,9 @@ refiná-los após resolver os gates T-01 e T-02.
     parcial, resposta vazia, HTTP, rede, timeout e payload inválido.
   - A suíte não acessa a Open-Meteo real e verifica que falhas não viram
     respostas vazias.
+  - Timeout de 10 segundos cobre headers e leitura do JSON, com limpeza do
+    timer em sucesso e falha. Perda de conexão durante o corpo é erro de rede,
+    não JSON inválido; retry do forecast não repete o geocoding já concluído.
   - Precipitação atual explicitamente nula é normalizada para `0 mm`;
     campo omitido e probabilidade diária nula permanecem indisponíveis.
 - **Dependências:** T-07, T-08, T-20.
@@ -547,6 +550,9 @@ refiná-los após resolver os gates T-01 e T-02.
     aprovado, sem corte de conteúdo funcional nem rolagem horizontal.
   - Os testes não dependem de rede externa e passam na matriz de viewport
     aprovada em T-02.
+  - Cobrir busca vazia/só espaços com feedback e sem rede, caracteres
+    especiais preservados, geocoding sem resultados e forecast sem
+    `current`/`daily`, com limpeza do resultado anterior e retry.
 - **Dependências:** T-02, T-19, T-20.
 - **Arquivos prováveis:** `tests/e2e/weather.spec.ts`,
   `playwright.config.ts`.

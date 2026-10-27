@@ -9,13 +9,18 @@ export function unitLabel(unit: Unit): string {
 }
 
 export function formatTemperature(temperatureC: number | undefined, unit: Unit): string {
-  if (temperatureC === undefined) {
+  if (typeof temperatureC !== 'number' || !Number.isFinite(temperatureC)) {
+    return 'Indisponível';
+  }
+
+  const temperature = convertTemperature(temperatureC, unit);
+  if (!Number.isFinite(temperature)) {
     return 'Indisponível';
   }
 
   const formattedTemperature = new Intl.NumberFormat('pt-BR', {
     maximumFractionDigits: 1,
-  }).format(convertTemperature(temperatureC, unit));
+  }).format(temperature);
 
   return `${formattedTemperature} ${unitLabel(unit)}`;
 }

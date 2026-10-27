@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useId, useState } from 'react';
 
 interface SearchBarProps {
   onSearch: (city: string) => void;
@@ -7,15 +7,23 @@ interface SearchBarProps {
 
 export default function SearchBar({ onSearch, disabled = false }: SearchBarProps) {
   const [city, setCity] = useState('');
+  const [validationError, setValidationError] = useState(false);
+  const inputId = useId();
+  const errorId = useId();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const trimmedCity = city.trim();
-    if (!trimmedCity || disabled) {
+    if (disabled) {
+      return;
+    }
+    if (!trimmedCity) {
+      setValidationError(true);
       return;
     }
 
+    setValidationError(false);
     onSearch(trimmedCity);
   }
 
@@ -27,19 +35,29 @@ export default function SearchBar({ onSearch, disabled = false }: SearchBarProps
       className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glass backdrop-blur-md sm:flex-row"
     >
       <div className="flex-1">
-        <label htmlFor="city-search" className="mb-2 block text-sm font-medium text-white">
+        <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-white">
           Buscar cidade
         </label>
         <input
-          id="city-search"
+          id={inputId}
           name="city"
           type="search"
           value={city}
-          onChange={(event) => setCity(event.target.value)}
+          onChange={(event) => {
+            setCity(event.target.value);
+            setValidationError(false);
+          }}
+          aria-invalid={validationError || undefined}
+          aria-describedby={validationError ? errorId : undefined}
           disabled={disabled}
           placeholder="Ex.: São Paulo"
           className="w-full rounded-xl border border-white/10 bg-night-800/80 px-4 py-3 text-white placeholder:text-white/50 focus:border-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-400/40 disabled:cursor-not-allowed disabled:opacity-60"
         />
+        {validationError && (
+          <p id={errorId} role="alert" className="mt-2 text-sm text-white">
+            Digite o nome de uma cidade.
+          </p>
+        )}
       </div>
       <button
         type="submit"
