@@ -433,6 +433,9 @@ refiná-los após resolver os gates T-01 e T-02.
     inventada.
   - Testes cobrem a formatação de datas conforme os gates aprovados, sem
     depender do fuso implícito do dispositivo.
+  - `formatDayLabel(date, index)` retorna Hoje/Amanhã para índices 0/1 e
+    dia da semana nos demais; sem índice, preserva o dia da semana.
+    `getShortDate(date)` formata DD/MM; datas inválidas permanecem indisponíveis.
 - **Dependências:** T-06, T-20.
 - **Arquivos prováveis:** `tests/unit/lib/weatherCodes.test.ts`,
   `tests/unit/lib/date.test.ts`.
@@ -447,6 +450,8 @@ refiná-los após resolver os gates T-01 e T-02.
     parcial, resposta vazia, HTTP, rede, timeout e payload inválido.
   - A suíte não acessa a Open-Meteo real e verifica que falhas não viram
     respostas vazias.
+  - Precipitação atual explicitamente nula é normalizada para `0 mm`;
+    campo omitido e probabilidade diária nula permanecem indisponíveis.
 - **Dependências:** T-07, T-08, T-20.
 - **Arquivos prováveis:** `tests/unit/services/openMeteo.test.ts`.
 - **Tipo:** Test.
@@ -543,7 +548,7 @@ refiná-los após resolver os gates T-01 e T-02.
   - Os testes não dependem de rede externa e passam na matriz de viewport
     aprovada em T-02.
 - **Dependências:** T-02, T-19, T-20.
-- **Arquivos prováveis:** `tests/e2e/weather-flow.spec.ts`,
+- **Arquivos prováveis:** `tests/e2e/weather.spec.ts`,
   `playwright.config.ts`.
 - **Tipo:** Test.
 - **Rastreabilidade:** CA-01.1–CA-01.6, CA-02.1–CA-02.3,

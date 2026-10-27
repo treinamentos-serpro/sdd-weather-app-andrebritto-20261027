@@ -44,7 +44,7 @@ describe('ForecastList', () => {
   it('renders each forecast day with condition, temperatures, and rain probability', () => {
     render(<ForecastList forecast={forecast} unit="celsius" />);
 
-    expect(screen.getByRole('heading', { name: 'Previsão' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Previsão de 5 dias' })).toBeVisible();
     expect(screen.getAllByRole('article')).toHaveLength(5);
     expect(screen.getByText('Máx. 25,1 °C')).toBeVisible();
     expect(screen.getByText('Mín. 17,8 °C')).toBeVisible();

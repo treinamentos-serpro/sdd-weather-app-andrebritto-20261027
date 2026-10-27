@@ -339,6 +339,9 @@ validar a resposta antes do mapeamento.
   rótulos e ícones da condição devem ser derivados do código WMO localmente,
   sem tratar o código numérico como texto descritivo. Essas métricas permanecem
   opcionais quando ausentes na resposta.
+  Exceção: `current.precipitation === null` é normalizado para
+  `precipitationMm: 0`; campo omitido continua `undefined`, assim como
+  probabilidade diária ausente ou nula.
   Para cada índice `i` de `daily.time`, criar um `ForecastDay` com
   `date=daily.time[i]`, `temperatureMaxC=daily.temperature_2m_max[i]`,
   `temperatureMinC=daily.temperature_2m_min[i]` e

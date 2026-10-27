@@ -21,11 +21,11 @@ describe('weatherService', () => {
     vi.useRealTimers();
   });
 
-  it('returns an empty list without calling the network for blank input', async () => {
+  it.each(['', '   ', '\t\n'])('does not call fetch for blank input %j', async (input) => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(searchCities('   ')).resolves.toEqual([]);
+    await expect(searchCities(input)).resolves.toEqual([]);
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -235,6 +235,9 @@ describe('weatherService', () => {
   it.each([
     ['current', { daily: { time: [] } }],
     ['daily', { current: { temperature_2m: 18 } }],
+    ['current and daily', {}],
+    ['null current', { current: null, daily: { time: [] } }],
+    ['null daily', { current: {}, daily: null }],
   ])('throws WeatherServiceError when %s is missing', async (_missing, payload) => {
     vi.stubGlobal(
       'fetch',
@@ -245,6 +248,41 @@ describe('weatherService', () => {
     );
 
     await expect(getWeather(city)).rejects.toBeInstanceOf(WeatherServiceError);
+  });
+
+  it('normalizes null current precipitation to zero without filling other null values', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          current: {
+            temperature_2m: null,
+            weather_code: null,
+            relative_humidity_2m: null,
+            wind_speed_10m: null,
+            precipitation: null,
+            surface_pressure: null,
+          },
+          daily: {
+            time: ['2026-10-27'],
+            precipitation_probability_max: [null],
+          },
+        }),
+      }),
+    );
+
+    const data = await getWeather(city);
+
+    expect(data.current).toEqual({
+      temperatureC: undefined,
+      weatherCode: undefined,
+      humidityPercent: undefined,
+      windSpeedKmh: undefined,
+      precipitationMm: 0,
+      pressureHpa: undefined,
+    });
+    expect(data.forecast[0].precipitationProbabilityPercent).toBeUndefined();
   });
 
   it('throws WeatherServiceError when the forecast response is not ok', async () => {

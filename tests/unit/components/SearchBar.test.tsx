@@ -23,12 +23,15 @@ describe('SearchBar', () => {
     expect(onSearch).not.toHaveBeenCalled();
   });
 
-  it('searches with the trimmed city name', async () => {
+  it.each([
+    'São Paulo',
+    '  São Paulo  ',
+  ])('searches with the trimmed city name for %j', async (term) => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
     render(<SearchBar onSearch={onSearch} />);
 
-    await user.type(screen.getByRole('searchbox', { name: 'Buscar cidade' }), '  São Paulo  ');
+    await user.type(screen.getByLabelText('Buscar cidade'), term);
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
 
     expect(onSearch).toHaveBeenCalledExactlyOnceWith('São Paulo');

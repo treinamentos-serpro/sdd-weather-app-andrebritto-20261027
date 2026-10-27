@@ -58,7 +58,7 @@ describe('App', () => {
     await user.keyboard('{Enter}');
 
     expect(await screen.findByText('22,4 °C')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Previsão' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Previsão de 5 dias' })).toBeVisible();
     expect(screen.getByText('Previsão carregada para São Paulo.')).toHaveAttribute(
       'aria-live',
       'polite',

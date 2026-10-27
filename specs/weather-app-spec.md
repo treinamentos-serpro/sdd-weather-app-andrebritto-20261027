@@ -182,7 +182,10 @@ requisito funcional correspondente para apoiar a criação de testes automatizad
   respectivamente).
 - **CA-03.6:** **Given** uma ou mais métricas atuais ausentes, **When** o clima
   atual é apresentado, **Then** as métricas ausentes são identificadas como
-  indisponíveis e nenhuma é inferida ou substituída.
+  indisponíveis e nenhuma é inferida ou substituída. Exceção de normalização
+  solicitada: `current.precipitation` explicitamente `null` é convertido para
+  `0 mm`; campo omitido permanece indisponível. A exceção não se aplica à
+  probabilidade diária de precipitação.
 
 **RF-04 — Consultar a previsão de cinco dias**
 

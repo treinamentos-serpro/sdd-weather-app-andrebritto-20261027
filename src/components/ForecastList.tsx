@@ -12,7 +12,7 @@ export default function ForecastList({ forecast, unit }: ForecastListProps) {
   return (
     <section aria-labelledby={titleId}>
       <h2 id={titleId} className="mb-4 text-xl font-semibold text-white">
-        Previsão
+        Previsão de 5 dias
       </h2>
       {forecast.length === 0 ? (
         <p className="rounded-2xl border border-white/10 bg-white/5 p-5 text-white/70">
