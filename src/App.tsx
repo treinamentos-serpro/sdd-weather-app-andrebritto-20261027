@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import CurrentWeather from './components/CurrentWeather';
 import ForecastList from './components/ForecastList';
 import SearchBar from './components/SearchBar';
@@ -6,65 +6,12 @@ import EmptyState from './components/states/EmptyState';
 import ErrorState from './components/states/ErrorState';
 import LoadingState from './components/states/LoadingState';
 import UnitToggle from './components/UnitToggle';
-import { mockWeatherData } from './mocks/weather';
-import type { Unit, WeatherData } from './types/weather';
-
-type WeatherViewState =
-  | { status: 'idle' }
-  | { status: 'loading'; query: string }
-  | { status: 'empty'; query: string }
-  | { status: 'error'; query: string; message: string }
-  | { status: 'success'; data: WeatherData };
-
-const MOCK_LOADING_DELAY_MS = 350;
+import useWeather from './hooks/useWeather';
+import type { Unit } from './types/weather';
 
 export default function App() {
   const [unit, setUnit] = useState<Unit>('celsius');
-  const [viewState, setViewState] = useState<WeatherViewState>({ status: 'idle' });
-  const searchTimer = useRef<number | undefined>(undefined);
-
-  useEffect(
-    () => () => {
-      if (searchTimer.current !== undefined) {
-        window.clearTimeout(searchTimer.current);
-      }
-    },
-    [],
-  );
-
-  function searchMockWeather(query: string) {
-    if (searchTimer.current !== undefined) {
-      window.clearTimeout(searchTimer.current);
-    }
-
-    setViewState({ status: 'loading', query });
-    searchTimer.current = window.setTimeout(() => {
-      try {
-        const normalizedQuery = query.toLocaleLowerCase('pt-BR');
-        const normalizedCity = mockWeatherData.city.name.toLocaleLowerCase('pt-BR');
-
-        if (normalizedQuery === normalizedCity) {
-          setViewState({ status: 'success', data: mockWeatherData });
-        } else {
-          setViewState({ status: 'empty', query });
-        }
-      } catch {
-        setViewState({
-          status: 'error',
-          query,
-          message: 'Não foi possível carregar os dados de demonstração.',
-        });
-      } finally {
-        searchTimer.current = undefined;
-      }
-    }, MOCK_LOADING_DELAY_MS);
-  }
-
-  function retrySearch() {
-    if (viewState.status === 'error') {
-      searchMockWeather(viewState.query);
-    }
-  }
+  const weather = useWeather();
 
   return (
     <div className="min-h-screen bg-night-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-600/20 via-night-900 to-night-900 px-4 py-6 text-white sm:px-6 sm:py-10">
@@ -83,16 +30,16 @@ export default function App() {
           </div>
           <UnitToggle unit={unit} onChange={setUnit} />
         </div>
-        <SearchBar onSearch={searchMockWeather} />
+        <SearchBar onSearch={weather.search} />
       </header>
 
       <main className="mx-auto mt-8 flex w-full max-w-5xl flex-col gap-8">
         <p aria-live="polite" aria-atomic="true" className="sr-only">
-          {viewState.status === 'success'
-            ? `Previsão carregada para ${viewState.data.city.name}.`
+          {weather.status === 'success' && weather.data
+            ? `Previsão carregada para ${weather.data.city.name}.`
             : ''}
         </p>
-        {viewState.status === 'idle' && (
+        {weather.status === 'idle' && (
           <section className="rounded-3xl border border-white/10 bg-white/5 px-6 py-16 text-center shadow-glass backdrop-blur-md sm:px-12">
             <p aria-hidden="true" className="text-5xl">
               🌤️
@@ -101,35 +48,33 @@ export default function App() {
               O tempo da sua cidade, em um só lugar
             </h1>
             <p className="mx-auto mt-3 max-w-xl text-white/70">
-              Busque por São Paulo para visualizar a previsão de demonstração. Os dados são locais e
-              não usam a API.
+              Busque uma cidade para consultar o clima atual e a previsão para os próximos dias.
             </p>
           </section>
         )}
 
-        {viewState.status === 'loading' && (
-          <LoadingState message={`Buscando previsão para ${viewState.query}...`} />
+        {weather.status === 'loading' && (
+          <LoadingState message={`Buscando previsão para ${weather.query}...`} />
         )}
 
-        {viewState.status === 'empty' && (
+        {weather.status === 'empty' && (
           <EmptyState
-            title={`Nenhum dado encontrado para "${viewState.query}"`}
-            hint="Neste modo de demonstração, tente buscar por São Paulo."
+            title={`Nenhuma cidade encontrada para "${weather.query}"`}
+            hint="Confira o nome e tente fazer outra busca."
           />
         )}
 
-        {viewState.status === 'error' && (
-          <ErrorState message={viewState.message} onRetry={retrySearch} />
+        {weather.status === 'error' && (
+          <ErrorState
+            message={weather.error ?? 'Não foi possível consultar o clima.'}
+            onRetry={weather.retry}
+          />
         )}
 
-        {viewState.status === 'success' && (
+        {weather.status === 'success' && weather.data && (
           <>
-            <CurrentWeather
-              city={viewState.data.city}
-              current={viewState.data.current}
-              unit={unit}
-            />
-            <ForecastList forecast={viewState.data.forecast} unit={unit} />
+            <CurrentWeather city={weather.data.city} current={weather.data.current} unit={unit} />
+            <ForecastList forecast={weather.data.forecast} unit={unit} />
           </>
         )}
       </main>
