@@ -86,7 +86,7 @@ describe('weatherService', () => {
       weatherCode: undefined,
       humidityPercent: undefined,
       windSpeedKmh: undefined,
-      precipitationMm: 0,
+      precipitationMm: undefined,
       pressureHpa: undefined,
     });
     expect(data.forecast).toEqual([
@@ -408,7 +408,7 @@ describe('weatherService', () => {
     await expect(getWeather(city)).rejects.toBeInstanceOf(WeatherServiceError);
   });
 
-  it('normalizes null current precipitation to zero without filling other null values', async () => {
+  it('keeps null precipitation and other null metrics unavailable', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -437,7 +437,7 @@ describe('weatherService', () => {
       weatherCode: undefined,
       humidityPercent: undefined,
       windSpeedKmh: undefined,
-      precipitationMm: 0,
+      precipitationMm: undefined,
       pressureHpa: undefined,
     });
     expect(data.forecast[0].precipitationProbabilityPercent).toBeUndefined();

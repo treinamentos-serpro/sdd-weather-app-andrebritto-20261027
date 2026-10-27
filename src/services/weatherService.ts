@@ -179,10 +179,7 @@ export async function getWeather(city: City): Promise<WeatherData> {
     weatherCode: getOptionalNumber(currentResponse, 'weather_code'),
     humidityPercent: getOptionalNumber(currentResponse, 'relative_humidity_2m'),
     windSpeedKmh: getOptionalNumber(currentResponse, 'wind_speed_10m'),
-    precipitationMm:
-      currentResponse.precipitation === null
-        ? 0
-        : getOptionalNumber(currentResponse, 'precipitation'),
+    precipitationMm: getOptionalNumber(currentResponse, 'precipitation'),
     pressureHpa: getOptionalNumber(currentResponse, 'surface_pressure'),
   };
 

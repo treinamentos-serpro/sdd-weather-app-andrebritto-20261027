@@ -6,7 +6,9 @@ As dependências listadas são diretas; IDs anteriores indicam a ordem sugerida,
 mas não criam dependência implícita.
 
 > **Gate de escopo:** os critérios dependentes de decisões ainda pendentes na
-> spec não estão aprovados para lançamento. Conclua T-01 a T-03 antes de fechar
+> spec não estão aprovados para lançamento. A baseline funcional de T-01 foi
+> aprovada em 27/10/2026; sua aderência ainda precisa ser verificada. Conclua
+> T-02, T-03 e T-31 a T-33 antes de fechar
 > a implementação e a validação de produção dos itens afetados. Não invente
 > valores para parâmetros ainda sem aprovação.
 
@@ -20,7 +22,7 @@ mas não criam dependência implícita.
 | **RF-04 — Consultar a previsão de cinco dias** | T-01, T-04, T-06, T-08, T-09, T-16, T-18, T-19 | T-22, T-23, T-26, T-29 | Nenhuma lacuna funcional identificada; granularidade e fuso continuam gates em T-01. |
 | **RF-05 — Alternar unidade de temperatura** | T-01, T-04, T-05, T-09, T-15, T-16, T-17, T-18, T-19 | T-21, T-26, T-27, T-29 | Nenhuma lacuna funcional identificada; persistência e arredondamento são decisões de T-01. |
 | **RF-06 — Informar estados da consulta** | T-02, T-09, T-10, T-11, T-12, T-13, T-18, T-19 | T-23, T-24, T-25, T-27, T-28, T-29, T-30 | Nenhuma lacuna funcional identificada; timeout e critérios operacionais permanecem gate em T-02. |
-| **RF-07 — Apresentar a interface em português do Brasil** | T-06, T-10–T-20 | T-22, T-25–T-29 | **Cobertura parcial:** falta tarefa explícita para definir e validar formatos regionais consistentes de datas e números, exigidos pela spec antes do aceite final. |
+| **RF-07 — Apresentar a interface em português do Brasil** | T-06, T-10–T-20, T-31 | T-22, T-25–T-29, T-31 | Formatos definidos na baseline; validação explícita rastreada em T-31. |
 
 ## Prioridade, tamanho e sequência de entrega
 
@@ -581,3 +583,61 @@ refiná-los após resolver os gates T-01 e T-02.
   `src/hooks/useWeather.ts`.
 - **Tipo:** Data.
 - **Rastreabilidade:** CA-02.3, CA-06.1–CA-06.5, RNF-05, RNF-06.
+
+## Entrega 9 — Preparação para produção
+
+### T-31 — Validar formatos regionais aprovados
+
+- **Status:** concluída em 27/10/2026.
+- **Descrição:** Consolidar evidências dos formatos pt-BR aprovados na spec.
+- **Critérios de aceite:**
+  - Datas ISO mantêm o dia civil em fusos diferentes do dispositivo; exibir
+    dia/mês, Hoje, Amanhã e dia da semana conforme a baseline.
+  - Temperaturas e métricas usam vírgula decimal e até uma casa decimal;
+    ausência continua indisponível e conversão não altera valores de origem.
+  - Rastrear testes de funções puras e componentes a CA-07.1 e CA-05.1–CA-05.4.
+- **Dependências:** T-01, T-05, T-06, T-21, T-22, T-26.
+- **Arquivos prováveis:** `src/lib/format.ts`, `src/lib/temperature.ts`,
+  `tests/unit/format.test.ts`, `tests/unit/temperature.test.ts`.
+- **Tipo:** Test.
+- **Rastreabilidade:** RF-07, CA-07.1, CA-05.1–CA-05.4.
+- **Evidências:** `tests/unit/format.test.ts` valida datas e rótulos;
+  `tests/unit/temperature.test.ts` valida conversão, precisão e ausências;
+  `tests/unit/components/CurrentWeather.test.tsx` valida números e unidades.
+  Os testes de data passaram em `America/Sao_Paulo` e `Pacific/Kiritimati`.
+
+### T-32 — Aprovar e medir os gates operacionais
+
+- **Status:** bloqueada por decisões de produto/operação e ambiente de medição.
+- **Descrição:** Fechar os gates de produção, sem transformar metas candidatas
+  em evidências de conformidade.
+- **Critérios de aceite:**
+  - Aprovar matriz de suporte, metas e condições de medição dos RNF-01 a RNF-04.
+  - Registrar testes manuais de teclado, foco e leitor de tela e avaliar
+    conformidade WCAG na matriz aprovada.
+  - Medir desempenho e disponibilidade no ambiente de lançamento.
+  - Registrar revisão de licença, atribuição, tráfego e privacidade do provedor.
+  - Aprovar política de limite de uso e adequação do timeout de 10 segundos.
+- **Dependências:** T-02, T-03, T-29.
+- **Arquivos prováveis:** `specs/weather-app-spec.md`,
+  `plans/weather-app-plan.md`.
+- **Tipo:** Infra.
+- **Rastreabilidade:** RNF-01–RNF-06, CA-06.5.
+
+### T-33 — Fechar aderência e evidências do PR
+
+- **Status:** correções locais implementadas; aceite de produção e CI remoto
+  bloqueados por T-32 e acesso autenticado ao GitHub.
+- **Descrição:** Revisar divergências restantes e publicar uma entrega real.
+- **Critérios de aceite:**
+  - Verificar seleção explícita de homônimos, campos nulos sem inferir zero
+    e aviso de cobertura parcial de datas; corrigir divergências com testes.
+  - Executar lint, build, testes unitários e E2E após mudanças de código.
+  - Confirmar checks remotos e revisão no PR contra a base correta.
+  - Não declarar produção aprovada enquanto T-31 e T-32 estiverem pendentes.
+- **Dependências:** T-30, T-31, T-32.
+- **Arquivos prováveis:** `src/hooks/useWeather.ts`,
+  `src/services/weatherService.ts`, `src/components/ForecastList.tsx`,
+  `tests/unit/`, `tests/e2e/weather.spec.ts`.
+- **Tipo:** Test.
+- **Rastreabilidade:** CA-02.1–CA-02.3, CA-04.1–CA-04.5, RNF-05.

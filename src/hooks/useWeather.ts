@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { getWeather, searchCities } from '../services/weatherService';
 import type { City, WeatherData } from '../types/weather';
 
-export type WeatherStatus = 'idle' | 'loading' | 'success' | 'error' | 'empty';
+export type WeatherStatus = 'idle' | 'loading' | 'selecting' | 'success' | 'error' | 'empty';
 
 interface WeatherState {
   status: WeatherStatus;
@@ -95,6 +95,17 @@ export default function useWeather() {
           status: 'empty',
           data: null,
           cities: [],
+          error: null,
+          query,
+        });
+        return;
+      }
+
+      if (cities.length > 1) {
+        setState({
+          status: 'selecting',
+          data: null,
+          cities,
           error: null,
           query,
         });

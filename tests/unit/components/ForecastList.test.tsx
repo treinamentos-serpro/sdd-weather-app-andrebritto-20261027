@@ -109,6 +109,16 @@ describe('ForecastList', () => {
     render(<ForecastList forecast={[]} unit="celsius" />);
 
     expect(screen.getByText('Previsão indisponível')).toBeVisible();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('announces partial coverage without creating missing days', () => {
+    render(<ForecastList forecast={forecast.slice(0, 2)} unit="celsius" />);
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Previsão parcial: 2 de 5 dias disponíveis.',
+    );
+    expect(screen.getAllByRole('article')).toHaveLength(2);
   });
 
   it('labels cards with the localized weekday', () => {

@@ -4,9 +4,39 @@ Este plano deriva da [especificação do produto](../specs/weather-app-spec.md).
 Ele define arquitetura, contratos e decisões para orientar a implementação; não
 substitui a spec nem contém o código final.
 
-> **Gate de escopo:** a spec está em baseline, mas não aprovada para produção.
-> Decisões marcadas como pendentes abaixo precisam ser resolvidas antes de
-> fechar a implementação ou validação de lançamento dos itens afetados.
+> **Gate de escopo:** a baseline funcional do MVP foi aprovada em 27/10/2026.
+> A produção continua bloqueada pelos gates remanescentes da spec.
+> O contrato aprovado abaixo substitui propostas funcionais anteriores; isso
+> não comprova aderência integral do código nem aprovação operacional.
+
+## Baseline funcional aprovada
+
+- Busca explícita por nome com `trim`, sem normalização, ordenação ou limite
+  adicionais aos do provedor; sem sugestões enquanto digita.
+- Previsão diária de hoje e quatro dias seguintes com `timezone=auto`.
+  `current`, `daily` e `daily.time` são obrigatórios; métricas são opcionais.
+- Celsius na origem; Fahrenheit derivado na apresentação, sem persistência
+  entre visitas. Números usam `Intl.NumberFormat('pt-BR')` com até uma casa
+  decimal. Datas usam dia/mês e rótulos pt-BR, preservando a data civil.
+- Timeout de 10 segundos cobre `fetch` e leitura do JSON, com `AbortController`
+  e limpeza do timer. Falha permite retry manual; não há atualização periódica.
+- A política específica de limite de uso, matriz de suporte, metas/medições
+  não funcionais e condições do provedor permanecem gates de produção.
+
+### Evidências e limites da preparação para produção
+
+Em 27/10/2026, após as correções desta preparação, `pnpm lint`, `pnpm build`,
+`pnpm test` (112 testes) e `pnpm test:e2e` (18 testes) passaram localmente.
+Isso não comprova WCAG AA, disponibilidade ou desempenho p95.
+Os scripts dos validadores SDD também passaram localmente, sem confirmação
+da execução completa no GitHub Actions.
+
+A preparação corrige seleção explícita entre múltiplas cidades, preserva
+precipitação nula como indisponível e anuncia cobertura parcial de datas.
+O hook usa `selecting` quando há múltiplos resultados, sem consultar previsão
+até a seleção; um resultado único mantém a consulta automática. Testes do hook,
+componentes e E2E cobrem esses comportamentos. Isso não substitui os gates
+operacionais nem uma avaliação de conformidade completa.
 
 ## Architecture
 
@@ -169,13 +199,12 @@ interface WeatherData {
 resultado de geocodificação. Campos meteorológicos opcionais representam
 indisponibilidade, não um valor calculado. Os campos diário `temperatureMaxC`,
 `temperatureMinC` e `weatherCode` são uma proposta de contrato para previsão
-diária; a granularidade e as variáveis da previsão são um gate da spec e devem
-ser confirmadas antes de fechar esse contrato.
+diária, agora aprovada na baseline funcional; as métricas permanecem opcionais.
 
 A fonte é solicitada em Celsius e a aplicação mantém temperaturas normalizadas
 em Celsius. A unidade escolhida afeta somente a apresentação; valores ausentes
-continuam ausentes. Precisão e arredondamento da conversão dependem da decisão
-pendente em Open Questions.
+continuam ausentes. A apresentação usa `pt-BR` com até uma casa decimal, conforme
+a baseline funcional aprovada.
 
 ## Data Flow
 
@@ -242,8 +271,7 @@ validar a resposta antes do mapeamento.
   padrão documentado 10, máximo 100), `language=pt` (respostas localizadas
   quando disponíveis), `format=json` (formato de resposta padrão). Exemplo:
   `https://geocoding-api.open-meteo.com/v1/search?name=Lisbon&count=10&language=pt&format=json`.
-  A escolha final de limite, cobertura e ordenação dos resultados permanece
-  pendente na spec.
+  A baseline usa os padrões do provedor, sem limite ou ordenação próprios.
 - **Resposta resumida:**
 
   ```json
@@ -361,9 +389,8 @@ data não textuais, geram erro explícito, não sucesso com dados inventados.
   A probabilidade é percentual e opcional; se ausente, indicar indisponibilidade
   sem inferir. Vincular current e forecast à `City` selecionada para formar
   `WeatherData`.
-- O exemplo diário é uma proposta para atender “hoje e os quatro dias
-  seguintes”; previsão diária versus horária, variáveis obrigatórias, política
-  de dados parciais e fuso seguem como gates da spec. Não assumir cinco datas
+- O contrato diário aprovado atende “hoje e os quatro dias seguintes” no fuso
+  da cidade, com métricas opcionais. Não assumir cinco datas
   completas: mapear somente datas/valores recebidos, indicar ausências e não
   inferir dados ausentes. Se a solicitação falhar por completo, não manter o
   snapshot anterior.
@@ -428,8 +455,8 @@ celsius = ((fahrenheit - 32) * 5) / 9;
 Uma função pura de `lib/temperature.ts` deve realizar a conversão/formatação
 para os componentes. A alternância só muda `Unit` e re-renderiza valores atuais
 e diários; não altera o `WeatherData` original nem inicia novo request. Valores
-ausentes permanecem indisponíveis. Regra de arredondamento/precisão ainda é um
-gate da spec e não deve ser presumida.
+ausentes permanecem indisponíveis. A apresentação usa `pt-BR` com até uma casa
+decimal, conforme a baseline funcional aprovada.
 
 ## Error Handling
 
@@ -442,9 +469,8 @@ gate da spec e não deve ser presumida.
   substituto da mensagem ao usuário.
 - **Timeout:** usar cancelamento via `AbortController` quando uma seleção nova
   substituir a solicitação anterior. Solicitações também devem ter limite de
-  duração para não deixar loading indefinidamente, mas o valor numérico e a
-  mensagem específica estão pendentes de aprovação na spec. Timeout aprovado
-  será `error` com tipo `timeout` e permitirá retry.
+  duração de 10 segundos, incluindo leitura do corpo. A mensagem aprovada é
+  “A requisição demorou demais.”; o erro permite retry.
 - **Resposta inválida:** payload malformado ou incompatível gera `error` de tipo
   `invalid-response`; nunca converter falha de parsing/validação em sucesso
   vazio ou dados padrão.
@@ -461,9 +487,8 @@ gate da spec e não deve ser presumida.
   resultados e expõe retry para a busca ou cidade atual.
 - Estados de carregamento, erro e vazio devem ser identificáveis por tecnologia
   assistiva; controles e nova tentativa devem ser operáveis por teclado.
-- Mensagens e tratamento específicos para limite de uso, bem como timeout
-  máximo, dependem de decisão operacional; até aprovação, não assumir códigos,
-  prazos ou textos específicos.
+- Mensagens e tratamento específicos para limite de uso dependem de decisão
+  operacional; não assumir retry automático ou prazos específicos.
 
 ## Testing Strategy
 
@@ -499,9 +524,9 @@ gate da spec e não deve ser presumida.
   conteúdo funcional ou rolagem horizontal. A matriz exata de viewports,
   dispositivos e orientações é um gate candidato de RNF-01 e deve ser aprovada
   antes de ser critério quantitativo de lançamento.
-- Rastrear os testes aos critérios CA-01 a CA-07 da spec. CA-04.1 e testes
-  quantitativos de datas/fuso, variáveis obrigatórias, arredondamento, timeout e
-  RNFs dependem da aprovação dos respectivos gates; não tratar alvos candidatos
+- Rastrear os testes aos critérios CA-01 a CA-07 da spec. Datas/fuso,
+  arredondamento e timeout seguem a baseline aprovada; a validação de
+  RNFs depende dos respectivos gates. Não tratar alvos candidatos
   de responsividade, acessibilidade, desempenho e disponibilidade como metas
   aceitas.
 
@@ -511,10 +536,10 @@ gate da spec e não deve ser presumida.
 | --- | --- | --- |
 | Chamar Open-Meteo do cliente via `services/`, sem backend próprio. | Criar backend/proxy para intermediar as chamadas. | A SPA não precisa de segredo e a spec exclui persistência no servidor; chamada direta reduz infraestrutura. Mantém, porém, dependência de rede/provedor no cliente e exige validar condições de uso, CORS, cota, privacidade e atribuição antes do lançamento. |
 | Estado React local em `useWeather`. | Biblioteca global de estado ou cache de servidor. | Uma tela e poucos fluxos não justificam dependência/abstração adicional. Se o app crescer para múltiplas telas ou cache compartilhado, reavaliar. |
-| Normalizar temperaturas para Celsius e derivar Fahrenheit na apresentação. | Solicitar novamente à API ao trocar unidade ou manter os dados na unidade selecionada. | Evita round-trip e mantém uma fonte única para os valores; conversão fica centralizada e testável. Precisa definir precisão/arredondamento, pendente na spec. |
+| Normalizar temperaturas para Celsius e derivar Fahrenheit na apresentação. | Solicitar novamente à API ao trocar unidade ou manter os dados na unidade selecionada. | Evita round-trip e mantém uma fonte única; conversão centralizada, com apresentação pt-BR de até uma casa decimal aprovada. |
 | Sem cache e sem exibir consulta anterior após falha. | Manter último resultado enquanto atualiza ou oferecer modo offline. | Segue RF-06 e evita apresentar dados obsoletos como atuais; reduz resiliência percebida quando a conexão falha. Cache/offline permanece fora do escopo confirmado. |
-| Previsão diária por cinco datas como proposta, aguardando aprovação. | Previsão horária, ou diária e horária combinadas. | A proposta simples cobre o objetivo de cinco dias sem aumentar volume/complexidade da UI. A spec não decidiu granularidade, campos nem fuso, então esta escolha não está aprovada para implementação final. |
-| Datas no fuso local da cidade como proposta (`timezone=auto`). | Usar UTC ou fuso do dispositivo. | O fuso da cidade tende a associar “hoje” ao destino consultado; pode divergir da expectativa local da pessoa. A spec lista o fuso como gate, portanto validar antes de fechar contrato e testes. |
+| Previsão diária por cinco datas aprovada na baseline. | Previsão horária, ou diária e horária combinadas. | Cobre o objetivo de cinco dias sem aumentar a complexidade; métricas opcionais não são sintetizadas. |
+| Datas no fuso local da cidade (`timezone=auto`), aprovadas na baseline. | Usar UTC ou fuso do dispositivo. | Associa “hoje” à cidade consultada; preservar as datas civis recebidas na apresentação. |
 | Testes de integração com API interceptada/mockada. | Fazer a suíte automatizada depender da Open-Meteo real. | Interceptação dá execução repetível e não consome cota nem falha por indisponibilidade externa; não substitui uma verificação operacional/manual do provedor. |
 | Camadas leves `components` / `hooks` / `services` / `lib`. | Arquitetura mais estratificada (repositórios, adaptadores e estado global). | As quatro responsabilidades isolam UI, coordenação, I/O e funções puras com baixo custo. Camadas extras seriam prematuras para o escopo atual e podem ser adicionadas se surgirem múltiplas fontes ou regras de domínio mais complexas. |
 | Dependência direta da cobertura, disponibilidade, cota e condições de uso da Open-Meteo. | Provedor alternativo ou camada multi-provedor desde o início. | A fonte única simplifica o primeiro release, mas cria dependência operacional. Confirmar limites, licença, atribuição, privacidade e adequação ao tráfego; não adicionar abstração multi-provedor sem necessidade confirmada. |

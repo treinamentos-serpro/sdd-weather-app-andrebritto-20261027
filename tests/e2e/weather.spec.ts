@@ -84,6 +84,48 @@ test('busca uma cidade, exibe cinco dias e converte para Fahrenheit', async ({ p
   await assertWeatherFlow(page);
 });
 
+test('exige seleção entre cidades e identifica previsão parcial', async ({ page }) => {
+  await page.route('https://geocoding-api.open-meteo.com/v1/search?**', (route) =>
+    route.fulfill({
+      json: {
+        results: [
+          { name: 'Santa Maria', country: 'Brasil', latitude: -29.68, longitude: -53.8 },
+          { name: 'Santa Maria', country: 'Portugal', latitude: 36.97, longitude: -25.1 },
+        ],
+      },
+    }),
+  );
+  const forecastRequests: string[] = [];
+  await page.route('https://api.open-meteo.com/v1/forecast?**', (route) => {
+    forecastRequests.push(route.request().url());
+    return route.fulfill({
+      json: {
+        current: { temperature_2m: 20, precipitation: null },
+        daily: { time: ['2026-10-27'], temperature_2m_max: [22] },
+      },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('searchbox', { name: 'Buscar cidade' }).fill('Santa Maria');
+  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  const choice = page.getByRole('button', { name: 'Santa Maria, Portugal' });
+  await expect(choice).toBeVisible();
+  expect(forecastRequests).toHaveLength(0);
+  await choice.focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByRole('heading', { name: 'Santa Maria, Portugal' })).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Previsão parcial: 1 de 5 dias disponíveis.');
+  await expect(page.getByRole('article')).toHaveCount(1);
+  const precipitation = page
+    .getByRole('region', { name: 'Santa Maria, Portugal' })
+    .getByText('Precipitação', { exact: true });
+  await expect(precipitation.locator('..')).toContainText('Indisponível');
+  expect(forecastRequests).toHaveLength(1);
+  expect(new URL(forecastRequests[0]).searchParams.get('latitude')).toBe('36.97');
+});
+
 test('mostra nenhuma cidade encontrada quando o geocoding retorna objeto vazio', async ({
   page,
 }) => {

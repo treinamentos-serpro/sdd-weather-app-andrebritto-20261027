@@ -43,7 +43,7 @@ describe('useWeather', () => {
     });
   });
 
-  it('searches and loads the weather for the first city', async () => {
+  it('waits for explicit selection when multiple cities match', async () => {
     vi.mocked(searchCities).mockResolvedValue([city, anotherCity]);
     vi.mocked(getWeather).mockResolvedValue(weatherData);
     const { result } = renderHook(() => useWeather());
@@ -53,14 +53,21 @@ describe('useWeather', () => {
     });
 
     expect(searchCities).toHaveBeenCalledExactlyOnceWith('São Paulo');
-    expect(getWeather).toHaveBeenCalledExactlyOnceWith(city);
+    expect(getWeather).not.toHaveBeenCalled();
     expect(result.current).toMatchObject({
-      status: 'success',
-      data: weatherData,
+      status: 'selecting',
+      data: null,
       cities: [city, anotherCity],
       error: null,
       query: 'São Paulo',
     });
+
+    await act(async () => {
+      await result.current.selectCity(city);
+    });
+
+    expect(getWeather).toHaveBeenCalledExactlyOnceWith(city);
+    expect(result.current.status).toBe('success');
   });
 
   it('sets empty when search returns no cities', async () => {

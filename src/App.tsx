@@ -37,7 +37,9 @@ export default function App() {
         <p aria-live="polite" aria-atomic="true" className="sr-only">
           {weather.status === 'success' && weather.data
             ? `Previsão carregada para ${weather.data.city.name}.`
-            : ''}
+            : weather.status === 'selecting'
+              ? `${weather.cities.length} cidades encontradas. Selecione uma cidade.`
+              : ''}
         </p>
         {weather.status === 'idle' && (
           <section className="rounded-3xl border border-white/10 bg-white/5 px-6 py-16 text-center shadow-glass backdrop-blur-md sm:px-12">
@@ -55,6 +57,27 @@ export default function App() {
 
         {weather.status === 'loading' && (
           <LoadingState message={`Buscando previsão para ${weather.query}...`} />
+        )}
+
+        {weather.status === 'selecting' && (
+          <section aria-labelledby="city-selection-title">
+            <h2 id="city-selection-title" className="mb-4 text-xl font-semibold">
+              Selecione uma cidade
+            </h2>
+            <ul className="flex flex-col gap-3">
+              {weather.cities.map((city) => (
+                <li key={`${city.name}-${city.latitude}-${city.longitude}`}>
+                  <button
+                    type="button"
+                    onClick={() => weather.selectCity(city)}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-400"
+                  >
+                    {[city.name, city.admin1, city.country].filter(Boolean).join(', ')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {weather.status === 'empty' && (

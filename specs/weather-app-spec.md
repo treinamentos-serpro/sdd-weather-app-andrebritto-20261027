@@ -15,8 +15,9 @@ O objetivo do produto é ajudar as pessoas a entender as condições do tempo pa
 uma cidade escolhida e planejar atividades próximas. Os públicos e objetivos
 prioritários ainda são hipóteses; consultar **Open Questions**.
 
-**Status:** baseline especificada; não aprovada para produção até a resolução
-dos gates de lançamento listados em **Open Questions**.
+**Status:** baseline funcional do MVP aprovada em 27/10/2026 pelo responsável
+pelo projeto. Preparação para produção em andamento; lançamento não aprovado
+até a resolução dos gates remanescentes em **Open Questions**.
 
 ## Functional Requirements
 
@@ -30,9 +31,10 @@ dos gates de lançamento listados em **Open Questions**.
 - Cada resultado deve apresentar o nome da localidade e, quando fornecidos pelo
   serviço de geocodificação, região administrativa e país para distinguir
   homônimos.
-- Busca parcial, códigos postais, coordenadas, sugestões enquanto digita,
-  ordenação e limite de resultados ainda dependem de decisão; ver **Open
-  Questions**.
+- A baseline pesquisa por nome, sem sugestões enquanto digita. Apenas espaços
+  externos são removidos; correspondência, ordenação e quantidade de resultados
+  seguem o provedor, sem normalização adicional ou limite próprio. Não há
+  garantia adicional para códigos postais, regiões ou erros de digitação.
 
 **RF-02 — Selecionar a cidade**
 
@@ -66,9 +68,9 @@ dos gates de lançamento listados em **Open Questions**.
   sem criar valores para campos ou datas ausentes.
 - A probabilidade de precipitação é apresentada em porcentagem; quando ausente,
   deve ser identificada como indisponível.
-- Granularidade, variáveis obrigatórias e fuso que determina “hoje” ainda
-  dependem de decisão; não liberar implementação/testes finais da previsão
-  antes dessas definições.
+- A previsão é diária, no fuso local da cidade solicitado com `timezone=auto`.
+  As estruturas `current`, `daily` e a lista `daily.time` são obrigatórias;
+  métricas individuais são opcionais. Datas ausentes não são sintetizadas.
 
 **RF-05 — Alternar unidade de temperatura**
 
@@ -78,8 +80,9 @@ dos gates de lançamento listados em **Open Questions**.
   no clima atual e na previsão.
 - A escolha se aplica a todos os valores de temperatura disponíveis na tela,
   sem alterar datas, condições meteorológicas ou outros tipos de medida.
-- Persistência da preferência e regra de arredondamento precisam ser definidas
-  antes de fechar os critérios quantitativos; ver **Open Questions**.
+- A escolha permanece apenas na sessão da página, sem persistência entre
+  visitas. A conversão usa `F = C × 9/5 + 32`; a apresentação usa
+  `Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 })`.
 
 **RF-06 — Informar estados da consulta**
 
@@ -89,14 +92,19 @@ dos gates de lançamento listados em **Open Questions**.
   coerente com a ação que falhou, com possibilidade de iniciar nova tentativa.
 - A versão inicial não apresenta dados em cache nem dados de uma consulta
   anterior após falha; informa a indisponibilidade em seu lugar.
-- Timeout, limite de espera e diferenciação entre erros recuperáveis e
-  permanentes dependem de decisão operacional; ver **Open Questions**.
+- Cada solicitação tem timeout de 10 segundos, incluindo leitura do corpo.
+  Timeout apresenta “A requisição demorou demais.”; falhas HTTP, inclusive
+  limite de uso, são erros e permitem nova tentativa manual, sem retry
+  automático. A política específica de limite de uso continua gate de produção.
 
 **RF-07 — Apresentar a interface em português do Brasil**
 
 - Rótulos, instruções, controles, estados, mensagens e conteúdo de data devem
-  estar em português do Brasil. Formatos regionais de data e número devem ser
-  definidos de modo consistente antes do aceite final.
+  estar em português do Brasil. Datas usam dia/mês com dois dígitos, “Hoje”,
+  “Amanhã” e dias da semana abreviados. Datas ISO sem horário são formatadas sem
+  deslocar o dia pelo fuso do dispositivo. Números usam `pt-BR`, com até uma
+  casa decimal; temperaturas incluem `°C` ou `°F`, sem transformar ausências
+  em zero.
 
 ## User Stories
 
@@ -239,8 +247,7 @@ requisito funcional correspondente para apoiar a criação de testes automatizad
 - **CA-06.5:** **Given** uma solicitação que ultrapassa o limite de timeout
   configurado, **When** o limite é atingido, **Then** o carregamento termina,
   uma mensagem de falha é apresentada e uma nova tentativa pode ser iniciada.
-  **O limite numérico precisa ser aprovado em Open Questions antes de servir
-  como teste automatizado.**
+  O limite aprovado é de 10 segundos por solicitação, incluindo leitura do corpo.
 
 **RF-07 — Apresentar a interface em português do Brasil**
 
@@ -274,8 +281,8 @@ medição.
   disponibilidade precisam ser aprovados antes de compromisso operacional.
 - **RNF-05 — Resiliência:** toda solicitação deve terminar em sucesso, ausência
   de dados ou erro; nenhuma falha pode deixar o carregamento ativo
-  indefinidamente. A duração máxima da solicitação depende do limite de timeout
-  a aprovar. A versão inicial não reutiliza dados de consulta anterior.
+  indefinidamente. A duração máxima é de 10 segundos por solicitação, incluindo
+  leitura do corpo. A versão inicial não reutiliza dados de consulta anterior.
 - **RNF-06 — Privacidade:** não exigir conta, não persistir consultas ou dados
   meteorológicos associados à pessoa em servidor e não solicitar geolocalização.
   Consultas são enviadas a Open-Meteo para execução da busca/consulta; política
@@ -323,10 +330,10 @@ representa aprovação desses alvos nem acrescenta critérios funcionais.
   anterior se chegar após a resposta da seleção atual.
 - **Troca de unidade com dados ausentes:** converter apenas temperaturas
   disponíveis; ausência continua indicada como indisponível.
-- **Temperaturas extremas ou conversão:** aplicar a regra de arredondamento
-  aprovada; essa regra é bloqueadora para teste numérico.
-- **Data, fuso e horário de verão:** a definição do fuso da previsão é
-  bloqueadora para determinar as cinco datas esperadas.
+- **Temperaturas extremas ou conversão:** aplicar a apresentação pt-BR com até
+  uma casa decimal, preservando ausências e rejeitando números não finitos.
+- **Data, fuso e horário de verão:** a previsão usa o fuso local da cidade;
+  datas civis recebidas não devem ser deslocadas pelo fuso do dispositivo.
 - **Queda de conexão:** encerrar carregamento com estado de erro, sem usar
   resposta anterior; permitir nova tentativa após a conexão voltar.
 - **Viewport, teclado e leitor de tela:** manter todos os fluxos operáveis e
@@ -386,27 +393,16 @@ Não fazem parte do escopo confirmado desta versão:
 
 ## Open Questions
 
-As decisões abaixo são **gates de produção**: até aprovação, os itens
-dependentes não têm critério de aceite final e não devem ser considerados
-prontos para implementação/validação de lançamento.
+As decisões funcionais de busca, previsão diária, fuso, unidades e timeout
+descritas nos requisitos foram aprovadas como baseline do MVP em 27/10/2026.
+Não há atualização periódica: os dados são obtidos por busca, seleção ou retry;
+horário de observação permanece fora do escopo. A aprovação não substitui a
+verificação de aderência da implementação.
 
-1. **Cobertura e busca:** cobertura geográfica esperada; aceitação de nomes
-   parciais, códigos postais ou regiões; normalização de acentos e erros de
-   digitação; limite e ordenação dos resultados.
-2. **Dados meteorológicos:** campos obrigatórios do clima atual; previsão diária,
-   horária ou ambas; variáveis obrigatórias por período e política de resposta
-   parcial. A baseline de UI inclui probabilidade máxima diária de precipitação
-   em porcentagem quando disponível; granularidade e outros campos obrigatórios
-   ainda precisam de aprovação.
-3. **Datas e fuso:** qual fuso define “hoje” e as cinco datas da previsão. A
-   recomendação é usar o fuso local da cidade consultada, mas precisa de
-   aprovação para produzir datas de teste inequívocas.
-4. **Unidades:** regra de arredondamento/precisão para Celsius e Fahrenheit e
-   se a escolha deve persistir entre visitas.
-5. **Atualidade:** frequência de atualização e necessidade de exibir horário de
-   observação ou atualização.
-6. **Operação:** timeout máximo por solicitação e tratamento/mensagem para
-   limite de uso da fonte. O timeout precisa ser definido para finalizar CA-06.5.
+As decisões abaixo continuam **gates de produção** e não estão aprovadas:
+
+6. **Operação:** definir mensagem e orientação para limite de uso da fonte e
+   confirmar se o timeout de 10 segundos atende ao ambiente de produção.
 7. **Metas de qualidade:** aprovar ou substituir a faixa de viewport
    320–1440 px, WCAG 2.2 AA, tempo de resposta de até 3 s no p95 e
    disponibilidade mensal de 99,5%; definir dispositivo, rede, amostra,

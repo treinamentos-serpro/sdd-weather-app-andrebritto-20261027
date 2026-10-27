@@ -76,6 +76,33 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Buscando previsão para Lisboa');
   });
 
+  it('allows keyboard selection between cities before requesting weather', async () => {
+    const user = userEvent.setup();
+    const otherCity: City = { ...city, admin1: 'Outra região', latitude: -22 };
+    vi.mocked(searchCities).mockResolvedValue([city, otherCity]);
+    vi.mocked(getWeather).mockResolvedValue({ ...weatherData, city: otherCity });
+    render(<App />);
+
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar cidade' }), 'São Paulo');
+    await user.keyboard('{Enter}');
+
+    const choice = await screen.findByRole('button', {
+      name: 'São Paulo, Outra região, Brasil',
+    });
+    expect(getWeather).not.toHaveBeenCalled();
+    expect(screen.getByText('2 cidades encontradas. Selecione uma cidade.')).toHaveAttribute(
+      'aria-live',
+      'polite',
+    );
+    choice.focus();
+    await user.keyboard('{Enter}');
+
+    expect(getWeather).toHaveBeenCalledExactlyOnceWith(otherCity);
+    expect(
+      await screen.findByRole('heading', { name: 'São Paulo, Outra região, Brasil' }),
+    ).toBeVisible();
+  });
+
   it('renders the empty state when no city matches', async () => {
     const user = userEvent.setup();
     vi.mocked(searchCities).mockResolvedValue([]);
